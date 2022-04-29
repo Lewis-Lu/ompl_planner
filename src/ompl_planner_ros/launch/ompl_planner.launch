@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- ompl-based motion planning node -->
+    <node pkg="ompl_planner" name="ompl_planner_node" type="ompl_planner"/>
+</launch>

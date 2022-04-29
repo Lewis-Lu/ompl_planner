@@ -1,0 +1,4 @@
+src/ompl_example_2d/*
+.vscode
+build/*
+devel/*
