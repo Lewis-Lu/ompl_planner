@@ -1,16 +1,19 @@
 #include "ompl_planner_ros/ompl_planner.h"
 
-#include <ompl/base/spaces/RealVectorStateSpace.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
-#include "boost/bind.hpp"
+
+#include <boost/bind.hpp>
 
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 
 namespace ompl_planner {
 
-Planner2D::Planner2D(double max_step_length, nav_msgs::OccupancyGridConstPtr& map)
-        : dim_(2), max_step_(max_step_length), grid_map_(map), frame_name_("map"), bounds_(dim_)
+Planner2D::Planner2D(double max_step_length, nav_msgs::OccupancyGrid* map)
+        : dim_(2), max_step_(max_step_length), grid_map_(map), 
+        frame_name_("map"), bounds_(dim_),
+        space_(new ob::RealVectorStateSpace(dim_)),
+        ss_(new og::SimpleSetup(space_))
 {
     ROS_INFO("Planner constructed.");
 }
@@ -19,33 +22,34 @@ Planner2D::Planner2D(double max_step_length, nav_msgs::OccupancyGridConstPtr& ma
 Planner2D::~Planner2D() {}
 
 
-bool Planner2D::plan(const geometry_msgs::PoseWithCovariance& start, 
+bool Planner2D::plan(const geometry_msgs::PoseStamped& start, 
                     const geometry_msgs::PoseStamped& goal, 
                     std::vector<geometry_msgs::PoseStamped>& path) 
 {
-    auto space(std::make_shared<ob::RealVectorStateSpace>(dim_));
+    if(!path.empty()) path.clear();
     
+    ROS_INFO("Planning started.");
+
     // setup bounds IN meter
     bounds_.setLow(grid_map_->info.origin.position.x);
     bounds_.setLow(grid_map_->info.origin.position.y);
     bounds_.setHigh(grid_map_->info.width * grid_map_->info.resolution + grid_map_->info.origin.position.x);
     bounds_.setHigh(grid_map_->info.height * grid_map_->info.resolution + grid_map_->info.origin.position.y);
     
-    space->setBounds(bounds_);
+    space_->as<ob::RealVectorStateSpace>()->setBounds(bounds_);
 
-    // initialize the simple setup
-    ss_ = std::make_shared<og::SimpleSetup>(space);
-    
+    ss_->clear();
+
     ss_->setStateValidityChecker( boost::bind(&Planner2D::isStateValid, this, _1) );
 
     // sampling resoltion
     ss_->getSpaceInformation()->setStateValidityCheckingResolution(grid_map_->info.resolution); 
 
-    ob::ScopedState<> start_ompl(space);
+    ob::ScopedState<> start_ompl(space_);
+    ob::ScopedState<> goal_ompl(space_);
+
     start_ompl[0] = start.pose.position.x;
     start_ompl[1] = start.pose.position.y;
-
-    ob::ScopedState<> goal_ompl(space);
     goal_ompl[0] = goal.pose.position.x;
     goal_ompl[1] = goal.pose.position.y;
 
@@ -58,13 +62,16 @@ bool Planner2D::plan(const geometry_msgs::PoseWithCovariance& start,
     if (ss_->haveSolutionPath()) {
         const std::size_t numSln = ss_->getProblemDefinition()->getSolutionCount();
         ROS_INFO("Found %d solutions", numSln);
-        og::PathGeometric& p = ss_->getSolutionPath();
-        // auto& stateVec = p.getState();
-        // for(auto& s : stateVec) {
-        //     geometry_msgs::PoseStamped tmpPose;
-        //     state2pose(s, tmpPose);
-        //     path.poses.push_back(tmpPose);
-        // }
+
+        og::PathGeometric p = ss_->getSolutionPath();
+        
+        auto stateVec = p.getStates();
+
+        for(auto s : stateVec) {
+            geometry_msgs::PoseStamped tmpPose;
+            state2pose(s, tmpPose);
+            path.push_back(tmpPose);
+        }
         return true;
     } else {
         return false;

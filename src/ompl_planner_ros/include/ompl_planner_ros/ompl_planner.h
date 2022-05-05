@@ -25,6 +25,9 @@
 #include <nav_msgs/OccupancyGrid.h>
 
 #include <ompl/geometric/SimpleSetup.h>
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+#include <ompl/base/StateSpace.h>
+#include <ompl/base/ScopedState.h>
 
 #define OCCUPIED 100
 #define FREE 0
@@ -33,11 +36,11 @@ namespace ompl_planner {
 
 class Planner2D {
 public:
-    Planner2D(double max_step_length, nav_msgs::OccupancyGridConstPtr& map);
+    Planner2D(double max_step_length, nav_msgs::OccupancyGrid* map);
 
     virtual ~Planner2D();
 
-    bool plan(const geometry_msgs::PoseWithCovariance& start, 
+    bool plan(const geometry_msgs::PoseStamped& start, 
             const geometry_msgs::PoseStamped& goal, 
             std::vector<geometry_msgs::PoseStamped>& path);
 
@@ -54,11 +57,13 @@ private:
 
     std::string frame_name_;
 
+    ompl::base::StateSpacePtr space_;
+
     ompl::geometric::SimpleSetupPtr ss_;
 
     ompl::base::RealVectorBounds bounds_;
 
-    nav_msgs::OccupancyGridConstPtr grid_map_;
+    nav_msgs::OccupancyGrid* grid_map_;
 
     tf::TransformListener* tf_listener_; 
 
