@@ -8,7 +8,7 @@
 
     <!-- RViz -->
     <node pkg="rviz" name="rviz" type="rviz" output="screen" args="-d $(arg rvizconfig)"/>
-    
+
     <!-- ompl-based motion planning node -->
     <node pkg="ompl_planner" name="ompl_planner_node" type="ompl_planner_node" output="screen"/>
 </launch>

@@ -3,9 +3,12 @@
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 
 #include <boost/bind.hpp>
+#include <iostream>
 
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
+
+using namespace std;
 
 namespace ompl_planner {
 
@@ -16,7 +19,8 @@ Planner2D::Planner2D(double max_step_length, nav_msgs::OccupancyGrid* map)
         ss_(new og::SimpleSetup(space_))
 {
     ROS_INFO("Planner constructed.");
-}
+    cout << grid_map_->info.width << " " << grid_map_->info.height << " " << grid_map_->info.resolution << "\n";
+}   
 
 
 Planner2D::~Planner2D() {}
@@ -31,19 +35,20 @@ bool Planner2D::plan(const geometry_msgs::PoseStamped& start,
     ROS_INFO("Planning started.");
 
     // setup bounds IN meter
-    bounds_.setLow(grid_map_->info.origin.position.x);
-    bounds_.setLow(grid_map_->info.origin.position.y);
-    bounds_.setHigh(grid_map_->info.width * grid_map_->info.resolution + grid_map_->info.origin.position.x);
-    bounds_.setHigh(grid_map_->info.height * grid_map_->info.resolution + grid_map_->info.origin.position.y);
-    
+    bounds_.setLow(0, grid_map_->info.origin.position.x);
+    bounds_.setLow(1, grid_map_->info.origin.position.y);
+
+    bounds_.setHigh(0, grid_map_->info.width * grid_map_->info.resolution + grid_map_->info.origin.position.x);
+    bounds_.setHigh(1, grid_map_->info.height * grid_map_->info.resolution + grid_map_->info.origin.position.y);
+
     space_->as<ob::RealVectorStateSpace>()->setBounds(bounds_);
 
     ss_->clear();
 
     ss_->setStateValidityChecker( boost::bind(&Planner2D::isStateValid, this, _1) );
 
-    // sampling resoltion
-    ss_->getSpaceInformation()->setStateValidityCheckingResolution(grid_map_->info.resolution); 
+    // sampling resolution
+    ss_->getSpaceInformation()->setStateValidityCheckingResolution(0.01); 
 
     ob::ScopedState<> start_ompl(space_);
     ob::ScopedState<> goal_ompl(space_);
@@ -55,26 +60,39 @@ bool Planner2D::plan(const geometry_msgs::PoseStamped& start,
 
     ss_->setStartAndGoalStates(start_ompl, goal_ompl);
 
+    auto planner(std::make_shared<og::RRTConnect>(ss_->getSpaceInformation()));
+    planner->setRange(0.05);
+    planner->setProblemDefinition(ss_->getProblemDefinition());
+    planner->setup();
+
     // ss_->setPlanner(std::make_shared<og::RRTConnect>(ss_->getSpaceInformation()));
 
-    ss_->solve();
+    ob::PlannerStatus ps = planner->ob::Planner::solve(1.0);
 
-    if (ss_->haveSolutionPath()) {
-        const std::size_t numSln = ss_->getProblemDefinition()->getSolutionCount();
-        ROS_INFO("Found %d solutions", numSln);
+    if(ps)
+    {
+        if (ss_->haveSolutionPath()) {
+            const std::size_t numSln = ss_->getProblemDefinition()->getSolutionCount();
+            
+            cout << "Found " << numSln << " solutions" << "\n";
 
-        og::PathGeometric p = ss_->getSolutionPath();
-        
-        auto stateVec = p.getStates();
+            og::PathGeometric p = ss_->getSolutionPath();
+            
+            auto stateVec = p.getStates();
 
-        for(auto s : stateVec) {
-            geometry_msgs::PoseStamped tmpPose;
-            state2pose(s, tmpPose);
-            path.push_back(tmpPose);
+            for(auto s : stateVec) {
+                geometry_msgs::PoseStamped tmpPose;
+                state2pose(s, tmpPose);
+                path.push_back(tmpPose);
+            }
+            return true;
+        } else {
+            return false;
         }
-        return true;
-    } else {
-        return false;
+    }
+    else 
+    {
+        ROS_INFO("found NO solution in timing boundary.");
     }
 }
 
@@ -89,6 +107,9 @@ void Planner2D::state2pose(const ob::State* state, geometry_msgs::PoseStamped& p
 }
 
 bool Planner2D::isStateValid(const ob::State* state) {
+
+    // cout << "state validity module" << endl;
+
     // extract the state value as two-dimensional realVectorStateSpace 
     const ob::RealVectorStateSpace::StateType* s = state->as<ob::RealVectorStateSpace::StateType>();
 
@@ -117,12 +138,12 @@ bool Planner2D::isStateValid(const ob::State* state) {
     if(mx < cells_x && my < cells_y) {
         if(OCCUPIED == grid_map_->data[mIndex]) {
             return false;
+        } else {
+            return true;
         }
     } else {
         return false;
     }
-
-    return true;
 }
 
 } /* namespace */

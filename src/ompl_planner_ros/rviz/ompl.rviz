@@ -84,7 +84,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Pose Color: 255; 85; 255
-      Pose Style: None
+      Pose Style: Axes
       Radius: 0.0299999993
       Shaft Diameter: 0.100000001
       Shaft Length: 0.100000001
@@ -161,25 +161,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 18.2088432
+      Distance: 13.3550072
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.57120645
-        Y: 2.53484559
-        Z: 0.0683688968
+        X: 6.95515776
+        Y: 2.27075481
+        Z: 3.7189765
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.899796486
+      Pitch: 1.3647964
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.685414791
+      Yaw: 4.6535964
     Saved: ~
 Window Geometry:
   Displays:
